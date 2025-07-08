@@ -1,1 +1,105 @@
-# Configuration settings
+# Multi-Speaker ASR with NLP Enhancement Configuration
+
+# Audio processing settings
+audio:
+  sample_rate: 16000
+  chunk_duration: 0.5  # seconds
+  chunk_size: 8000     # samples (sample_rate * chunk_duration)
+  channels: 1
+  dtype: float32
+
+# Noise reduction settings
+noise_reduction:
+  enabled: true
+  model_type: "denoising_autoencoder"
+  model_path: "models/denoiser.pth"
+  input_dim: 128
+  hidden_dim: 64
+  enhancement_factor: 0.8
+
+# Speaker separation settings
+speaker_separation:
+  enabled: true
+  model_type: "speechbrain"  # Options: speechbrain, demucs, custom
+  model_name: "speechbrain/sepformer-wsj02mix"
+  max_speakers: 4
+  min_segment_duration: 0.5  # seconds
+
+# ASR settings
+asr:
+  model_type: "whisper"  # Options: whisper, faster-whisper
+  model_size: "base"     # Options: tiny, base, small, medium, large
+  language: "en"
+  task: "transcribe"
+  temperature: 0.0
+  beam_size: 5
+  best_of: 5
+
+# NLP Error Correction settings
+nlp_correction:
+  # Model selection
+  primary_model: "t5-base"
+  fallback_model: "t5-small"
+  bert_model: "bert-base-uncased"
+  
+  # Correction strategies
+  strategies:
+    pattern_based: true
+    masked_lm: true
+    seq2seq: true
+    phonetic: true
+    contextual: true
+  
+  # Context settings
+  context_window_size: 5
+  speaker_history_size: 10
+  
+  # Real-time settings
+  max_latency_ms: 100
+  enable_caching: true
+  cache_size: 1000
+  
+  # Confidence thresholds
+  min_confidence: 0.3
+  correction_threshold: 0.6
+
+# Pipeline settings
+pipeline:
+  parallel_processing: true
+  max_workers: 4
+  buffer_size: 10
+  enable_streaming: true
+  
+# Logging settings
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  file: "logs/asr_pipeline.log"
+  console: true
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Server settings (for WebSocket)
+server:
+  host: "localhost"
+  port: 8765
+  max_connections: 10
+  timeout: 30  # seconds
+
+# Model paths
+models:
+  base_dir: "models"
+  download_on_start: true
+  
+# Performance optimization
+optimization:
+  use_gpu: true
+  gpu_device: 0  # CUDA device index
+  mixed_precision: true
+  batch_processing: true
+  batch_size: 4
+
+# Evaluation metrics
+metrics:
+  calculate_wer: true
+  calculate_latency: true
+  save_results: true
+  results_dir: "results"
