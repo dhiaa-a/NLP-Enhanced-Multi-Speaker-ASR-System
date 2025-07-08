@@ -159,8 +159,162 @@ nlp_correction:
 
 ### Project Structure
 
-```
+````
 src/
 ├── nlp/                 # NLP correction modules
-│   ├── error_corrector
+│   ├── error_corrector.py      # Main correction logic
+│   ├── correction_strategies.py # Different correction methods
+│   ├── speaker_models.py       # Speaker-specific learning
+│   └── realtime_corrector.py   # Optimized for speed
+├── audio/              # Audio processing modules
+│   ├── noise_reduction.py
+│   └── speaker_separation.py
+├── asr/                # ASR integration
+│   └── asr_interface.py
+└── pipeline/           # Pipeline orchestration
+    └── orchestrator.py
+
+### Adding New Correction Strategies
+
+1. Create a new method in `correction_strategies.py`:
+```python
+def my_custom_correction(self, text: str) -> str:
+    # Your correction logic here
+    return corrected_text
+````
+
+2. Register it in the strategy list
+3. Test with the demo script
+
+### Testing
+
+Run tests:
+
+```bash
+pytest tests/
 ```
+
+Run with coverage:
+
+```bash
+pytest --cov=src tests/
+```
+
+## 🤝 Contributing
+
+We welcome contributions! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Areas for Contribution
+
+-   Additional language support
+-   New correction strategies
+-   Performance optimizations
+-   Better speaker diarization
+-   Integration with more ASR engines
+
+## 📈 Roadmap
+
+-   [ ] Multi-language support beyond English
+-   [ ] Online learning from user corrections
+-   [ ] Integration with video (lip reading)
+-   [ ] Edge device optimization
+-   [ ] Real-time visualization dashboard
+-   [ ] Docker containerization
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+-   OpenAI Whisper for ASR capabilities
+-   Hugging Face for transformer models
+-   SpeechBrain for speaker separation
+-   The open-source community
+
+## 📚 Citation
+
+If you use this work in your research, please cite:
+
+```bibtex
+@article{your-name-2024,
+  title={NLP-Enhanced Error Correction for Multi-Speaker ASR},
+  author={Your Name},
+  journal={Your Conference/Journal},
+  year={2024}
+}
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+1. **High latency**:
+
+    - Ensure GPU is being used
+    - Try smaller models (t5-small)
+    - Check config settings
+
+2. **Poor correction quality**:
+
+    - Increase context window size
+    - Enable speaker-specific learning
+    - Fine-tune on your domain
+
+3. **Memory issues**:
+    - Reduce batch size
+    - Use model quantization
+    - Clear cache periodically
+
+### Getting Help
+
+-   Check the [docs](docs/) folder
+-   Open an issue on GitHub
+-   Contact: your.email@example.com
+
+## 🚀 Advanced Usage
+
+### Custom Pipeline
+
+```python
+from src.nlp import RealTimeErrorCorrector
+from src.pipeline import MultiSpeakerASRPipeline
+
+# Create custom corrector
+corrector = RealTimeErrorCorrector(max_latency_ms=50)
+
+# Use in pipeline
+pipeline = MultiSpeakerASRPipeline()
+pipeline.realtime_corrector = corrector
+```
+
+### WebSocket Integration
+
+```javascript
+// Client-side connection
+const ws = new WebSocket("ws://localhost:8765")
+
+ws.onmessage = (event) => {
+	const result = JSON.parse(event.data)
+	console.log(`Speaker ${result.speaker_id}: ${result.corrected_text}`)
+}
+```
+
+### Performance Monitoring
+
+```python
+# Get detailed metrics
+metrics = pipeline.get_performance_metrics()
+print(f"Average latency: {metrics['average_latency_ms']}ms")
+print(f"Cache hit rate: {metrics['nlp_correction_stats']['cache_hit_rate']}")
+```
+
+---
+
+**Note**: This is a research project demonstrating novel approaches to multi-speaker ASR. For production use, additional testing and optimization may be required.
