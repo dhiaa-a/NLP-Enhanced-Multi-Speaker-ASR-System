@@ -57,18 +57,38 @@ class NLPErrorCorrector:
     def _load_config(self, config_path: str) -> dict:
         """Load configuration from YAML file"""
         try:
+            # If no config path provided, use defaults
+            if not config_path:
+                return self._get_default_config()
+                
+            # If it's already a dict, return it
+            if isinstance(config_path, dict):
+                return config_path
+                
+            # Try to load from file
             with open(config_path, 'r') as f:
                 config = yaml.safe_load(f)
-            return config['nlp_correction']
+            return config.get('nlp_correction', self._get_default_config())
         except Exception as e:
             logger.error(f"Failed to load config: {e}")
-            # Return default config
-            return {
-                'primary_model': 't5-base',
-                'context_window_size': 5,
-                'max_latency_ms': 100,
-                'correction_threshold': 0.6
+            return self._get_default_config()
+
+    def _get_default_config(self) -> dict:
+        """Get default configuration"""
+        return {
+            'primary_model': 't5-base',
+            'context_window_size': 5,
+            'max_latency_ms': 100,
+            'correction_threshold': 0.6,
+            'use_gpu': False,  # Default to CPU for Windows
+            'strategies': {
+                'pattern_based': True,
+                'masked_lm': True,
+                'seq2seq': True,
+                'phonetic': True,
+                'contextual': True
             }
+        }
     
     def _setup_device(self) -> torch.device:
         """Setup computation device (GPU/CPU)"""
@@ -226,7 +246,7 @@ class NLPErrorCorrector:
                 context_str = " ".join(segment.context_window[-3:])
                 input_text = f"Context: {context_str} Current: {segment.raw_text}"
             else:
-                input_text = f"Correct the transcription errors: {segment.raw_text}"
+                input_text = f"fix errors: {segment.raw_text}"
             
             # Tokenize
             inputs = self.corrector_tokenizer(
@@ -245,7 +265,10 @@ class NLPErrorCorrector:
                     temperature=0.7,
                     do_sample=True,
                     top_p=0.9,
-                    early_stopping=True
+                    early_stopping=True,
+                    repetition_penalty=2.0,
+                    length_penalty=1.0,
+                    max_new_tokens=50
                 )
             
             corrected = self.corrector_tokenizer.decode(outputs[0], skip_special_tokens=True)

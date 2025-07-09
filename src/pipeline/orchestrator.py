@@ -1,5 +1,5 @@
 """
-Pipeline Orchestrator Module
+Pipeline Orchestrator Module - FIXED VERSION
 Manages the complete audio processing pipeline from input to corrected output.
 """
 
@@ -14,6 +14,7 @@ from loguru import logger
 import torch
 import queue
 import threading
+import os
 
 # Import our modules
 from ..nlp.error_corrector import NLPErrorCorrector, TranscriptionSegment
@@ -75,11 +76,91 @@ class MultiSpeakerASRPipeline:
     def _load_config(self, config_path: str) -> dict:
         """Load configuration from YAML file"""
         try:
-            with open(config_path, 'r') as f:
-                return yaml.safe_load(f)
+            # Check if config_path is a file path or already a dict
+            if isinstance(config_path, dict):
+                return config_path
+            
+            # If it's a string path, load the file
+            if os.path.exists(config_path):
+                with open(config_path, 'r') as f:
+                    return yaml.safe_load(f)
+            else:
+                # Use default config if file not found
+                logger.warning(f"Config file not found: {config_path}, using defaults")
+                return self._get_default_config()
         except Exception as e:
             logger.error(f"Failed to load config: {e}")
-            raise
+            return self._get_default_config()
+    
+    def _get_default_config(self) -> dict:
+        """Get default configuration"""
+        return {
+            'audio': {
+                'sample_rate': 16000,
+                'chunk_duration': 0.5,
+                'chunk_size': 8000,
+                'channels': 1,
+                'dtype': 'float32'
+            },
+            'noise_reduction': {
+                'enabled': True,
+                'model_type': 'denoising_autoencoder',
+                'model_path': 'models/denoiser.pth',
+                'input_dim': 128,
+                'hidden_dim': 64,
+                'enhancement_factor': 0.8
+            },
+            'speaker_separation': {
+                'enabled': True,
+                'model_type': 'mock',  # Use mock separator for now
+                'max_speakers': 4,
+                'min_segment_duration': 0.5
+            },
+            'asr': {
+                'model_type': 'whisper',
+                'model_size': 'base',
+                'language': 'en',
+                'task': 'transcribe',
+                'temperature': 0.0,
+                'beam_size': 5,
+                'best_of': 5
+            },
+            'nlp_correction': {
+                'primary_model': 't5-base',
+                'fallback_model': 't5-small',
+                'bert_model': 'bert-base-uncased',
+                'strategies': {
+                    'pattern_based': True,
+                    'masked_lm': True,
+                    'seq2seq': True,
+                    'phonetic': True,
+                    'contextual': True,
+                    'realtime': True,  # Add this
+                    'speaker_specific': False  # Disable for now
+                },
+                'context_window_size': 5,
+                'speaker_history_size': 10,
+                'max_latency_ms': 100,
+                'enable_caching': True,
+                'cache_size': 1000,
+                'min_confidence': 0.3,
+                'correction_threshold': 0.6
+            },
+            'pipeline': {
+                'parallel_processing': True,
+                'max_workers': 4,
+                'buffer_size': 10,
+                'enable_streaming': True
+            },
+            'optimization': {
+                'use_gpu': torch.cuda.is_available(),
+                'gpu_device': 0,
+                'mixed_precision': False,  # Disable for CPU
+                'batch_processing': True,
+                'batch_size': 4,
+                'warmup': True
+            }
+        }
     
     def _init_components(self):
         """Initialize all pipeline components"""
@@ -91,8 +172,9 @@ class MultiSpeakerASRPipeline:
             # ASR component
             self.asr = ASRInterface(self.config['asr'])
             
-            # NLP correction components
-            self.nlp_corrector = NLPErrorCorrector(self.config)
+            # NLP correction components - pass config_path string, not dict
+            config_path = "config/config.yaml" if os.path.exists("config/config.yaml") else None
+            self.nlp_corrector = NLPErrorCorrector(config_path) if config_path else NLPErrorCorrector()
             self.speaker_corrector = SpeakerAwareCorrector()
             self.realtime_corrector = RealTimeErrorCorrector(
                 max_latency_ms=self.config['nlp_correction']['max_latency_ms'],
@@ -287,7 +369,7 @@ class MultiSpeakerASRPipeline:
         )
         
         # Apply NLP correction based on quality and time constraints
-        if self.config['nlp_correction']['strategies']['realtime']:
+        if self.config['nlp_correction']['strategies'].get('realtime', True):
             # Use real-time corrector
             correction_result = await self.realtime_corrector.correct_async(
                 raw_text,
@@ -300,7 +382,7 @@ class MultiSpeakerASRPipeline:
             segment = self.nlp_corrector.correct_segment(segment)
         
         # Apply speaker-specific corrections if enabled
-        if self.config['nlp_correction']['strategies']['speaker_specific']:
+        if self.config['nlp_correction']['strategies'].get('speaker_specific', False):
             segment.corrected_text = self.speaker_corrector.speaker_specific_correction(
                 segment.corrected_text or segment.raw_text,
                 speaker_id,
@@ -318,25 +400,27 @@ class MultiSpeakerASRPipeline:
     
     def _update_metrics(self, result: ProcessingResult):
         """Update performance metrics"""
-        self.performance_metrics['processed_segments'] += len(result.segments)
-        
-        # Update average latency
-        n = self.performance_metrics['processed_segments']
-        current_avg = self.performance_metrics['average_latency_ms']
-        self.performance_metrics['average_latency_ms'] = (
-            (current_avg * (n - 1) + result.total_latency_ms) / n
-        )
-        
-        # Update stage latencies
-        for stage, latency in result.stage_latencies.items():
-            if stage not in self.performance_metrics['stage_latencies']:
-                self.performance_metrics['stage_latencies'][stage] = latency
-            else:
-                # Running average
-                current = self.performance_metrics['stage_latencies'][stage]
-                self.performance_metrics['stage_latencies'][stage] = (
-                    (current * (n - 1) + latency) / n
+        if len(result.segments) > 0:
+            self.performance_metrics['processed_segments'] += len(result.segments)
+            
+            # Update average latency
+            n = self.performance_metrics['processed_segments']
+            if n > 0:
+                current_avg = self.performance_metrics['average_latency_ms']
+                self.performance_metrics['average_latency_ms'] = (
+                    (current_avg * (n - len(result.segments)) + result.total_latency_ms) / n
                 )
+            
+            # Update stage latencies
+            for stage, latency in result.stage_latencies.items():
+                if stage not in self.performance_metrics['stage_latencies']:
+                    self.performance_metrics['stage_latencies'][stage] = latency
+                else:
+                    # Running average
+                    current = self.performance_metrics['stage_latencies'][stage]
+                    self.performance_metrics['stage_latencies'][stage] = (
+                        (current * (n - 1) + latency) / n if n > 0 else latency
+                    )
     
     def process_file(self, audio_file_path: str) -> List[TranscriptionSegment]:
         """

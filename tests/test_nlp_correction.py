@@ -5,6 +5,7 @@ Tests for NLP Error Correction Module
 import pytest
 import sys
 import os
+import torch
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.nlp.error_corrector import NLPErrorCorrector, TranscriptionSegment

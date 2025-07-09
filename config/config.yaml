@@ -20,7 +20,7 @@ noise_reduction:
 # Speaker separation settings
 speaker_separation:
   enabled: true
-  model_type: "speechbrain"  # Options: speechbrain, demucs, custom
+  model_type: "mock"  # Changed from "speechbrain" to "mock" to avoid Windows symlink issues
   model_name: "speechbrain/sepformer-wsj02mix"
   max_speakers: 4
   min_segment_duration: 0.5  # seconds
@@ -49,6 +49,8 @@ nlp_correction:
     seq2seq: true
     phonetic: true
     contextual: true
+    realtime: true      # Added this
+    speaker_specific: false  # Set to false for initial testing
   
   # Context settings
   context_window_size: 5
@@ -61,7 +63,10 @@ nlp_correction:
   
   # Confidence thresholds
   min_confidence: 0.3
-  correction_threshold: 0.6
+  correction_threshold: 0.9  # Increased to force more corrections
+  
+  # GPU settings
+  use_gpu: false  # Set to false for Windows CPU usage
 
 # Pipeline settings
 pipeline:
@@ -87,15 +92,16 @@ server:
 # Model paths
 models:
   base_dir: "models"
-  download_on_start: true
+  download_on_start: false  # Set to false to avoid download issues
   
 # Performance optimization
 optimization:
-  use_gpu: true
+  use_gpu: false  # Changed to false for Windows CPU
   gpu_device: 0  # CUDA device index
-  mixed_precision: true
+  mixed_precision: false  # Disabled for CPU
   batch_processing: true
   batch_size: 4
+  warmup: true
 
 # Evaluation metrics
 metrics:

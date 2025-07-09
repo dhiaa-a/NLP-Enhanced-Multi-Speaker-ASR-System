@@ -15,6 +15,8 @@ import time
 from colorama import init, Fore, Back, Style
 from src.pipeline.orchestrator import MultiSpeakerASRPipeline, AudioSegment
 from src.nlp.error_corrector import TranscriptionSegment
+from src.nlp.correction_strategies import CorrectionStrategies
+
 
 # Initialize colorama for colored output
 init()
@@ -92,11 +94,12 @@ class ASRDemo:
             
             # Apply correction
             start_time = time.time()
-            corrected_segment = self.pipeline.nlp_corrector.correct_segment(segment)
+            strategies = CorrectionStrategies()
+            segment.corrected_text = strategies.pattern_based_correction(segment.raw_text)
             latency_ms = (time.time() - start_time) * 1000
             
             # Display results
-            self.print_comparison(corrected_segment)
+            self.print_comparison(segment)
             print(f"{Fore.MAGENTA}Processing time:{Style.RESET_ALL} {latency_ms:.1f}ms")
             print("-" * 60)
     

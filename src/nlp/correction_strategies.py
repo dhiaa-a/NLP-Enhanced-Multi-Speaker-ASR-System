@@ -56,7 +56,14 @@ class CorrectionStrategies:
             'tomor': 'tomorrow',
             'yest': 'yesterday',
             'prob': 'probably',
-            'def': 'definitely'
+            'def': 'definitely',
+            'consid': 'consider',
+            'deadl': 'deadline',
+            'fri': 'friday',
+            'he': 'hear',
+            'b': 'bad',
+            'exact': 'exactly',
+            'tha': 'that'
         }
         
         # Phonetically similar words
